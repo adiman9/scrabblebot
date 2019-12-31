@@ -101,7 +101,7 @@ class ScrabbleBoard {
               },
               direction,
             }
-            score = this.calculateScore(wordArgs, true);
+            score = this.calculateScore(wordArgs, true, playerTiles.length);
 
             if (score !== false && score > maxScore) {
               bestMove = wordArgs;
@@ -174,7 +174,7 @@ class ScrabbleBoard {
               },
               direction,
             }
-            score = this.calculateScore(wordArgs, true);
+            score = this.calculateScore(wordArgs, true, playerTiles.length);
 
             if (score !== false && score > maxScore) {
               bestMove = wordArgs;
@@ -189,7 +189,7 @@ class ScrabbleBoard {
       console.log('No valid move available');
       return;
     }
-    this.addWord(bestMove);
+    this.addWord(bestMove, playerTiles.length);
     cb();
   }
 
@@ -265,7 +265,7 @@ class ScrabbleBoard {
     }
     return arr;
   }
-  addWord({ word, coord, direction }) {
+  addWord({ word, coord, direction }, tileCount=7) {
     const letters = word.split('');
     let rowInc = 0;
     let columnInc = 0;
@@ -278,7 +278,7 @@ class ScrabbleBoard {
 
     let { row, column } = coord;
 
-    const score = this.calculateScore({ word, coord, direction }, true);
+    const score = this.calculateScore({ word, coord, direction }, true, tileCount);
     if (score !== false) {
       const scoringWord = this.findWord({coord, direction});
       console.log(scoringWord.word, score);
@@ -478,7 +478,7 @@ class ScrabbleBoard {
       return "";
     }
   }
-  calculateScore({ word, coord, direction }, isCurrentTurn=false) {
+  calculateScore({ word, coord, direction }, isCurrentTurn=false, tileCount=7) {
     if (isCurrentTurn) {
       this.currentTurn = {
         word,
@@ -500,6 +500,7 @@ class ScrabbleBoard {
     let { row, column } = coord;
 
     let score = 0;
+    let extraScores = 0;
     let wordMultiplier = 1;
 
     if (direction === 'across') {
@@ -508,7 +509,7 @@ class ScrabbleBoard {
         // find word
         const new_coord = {row, column: column - 1};
         word_meta = this.findWordFromCenter({coord: new_coord, direction});
-      } else if (column > 0) {
+      } else if (column > -1) {
         // check end of word
         word_meta = this.findWord({coord, direction});
       }
@@ -523,7 +524,7 @@ class ScrabbleBoard {
         // find word
         const new_coord = {row: row - 1, column};
         word_meta = this.findWordFromCenter({coord: new_coord, direction});
-      } else if (row > 0) {
+      } else if (row > -1) {
         // check end of word
         word_meta = this.findWord({coord, direction});
       }
@@ -538,9 +539,13 @@ class ScrabbleBoard {
       return false;
     } 
 
+    let usedTileCount = 0;
     for (let letter of letters) {
       let letterMultiplier = 1;
       if (this.board[row][column] === "") {
+        if (isCurrentTurn) {
+          usedTileCount += 1;
+        }
         let special = board(column, row) 
         letterMultiplier = special.LS;
         wordMultiplier = Math.max(wordMultiplier, special.WS);
@@ -562,9 +567,9 @@ class ScrabbleBoard {
             const calculatedScore = this.calculateScore({
               ...word_meta,
               direction: new_direction,
-            });
+            }, false, tileCount);
             if (calculatedScore !== false) {
-              score += calculatedScore;
+              extraScores += calculatedScore;
             } else {
               return false;
             }
@@ -586,9 +591,9 @@ class ScrabbleBoard {
             const calculatedScore = this.calculateScore({
               ...word_meta,
               direction: new_direction,
-            });
+            }, false, tileCount);
             if (calculatedScore !== false) {
-              score += calculatedScore;
+              extraScores += calculatedScore;
             } else {
               return false;
             }
@@ -600,7 +605,10 @@ class ScrabbleBoard {
       column += columnInc;
     }
     score *= wordMultiplier;
-    return score;
+    if (usedTileCount === tileCount) {
+      score += 50;
+    }
+    return score + extraScores;
   }
 }
 
@@ -723,7 +731,7 @@ function Board() {
                   word: newWord,
                   coord: addingWord,
                   direction,
-                });
+                }, 7);
                 setAddingWord(false);
                 setDirection('across');
                 setNewWord('');
