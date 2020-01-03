@@ -56,6 +56,7 @@ class ScrabbleBoard {
 
           let score = 0;
           let playerTilesCopy = [...playerTiles];
+          let numPlayerTiles = playerTilesCopy.length;
 
           if (executedWords[word]) {
             continue;
@@ -92,7 +93,7 @@ class ScrabbleBoard {
           } // end of for loop
 
 
-          if (valid) {
+          if (valid && playerTilesCopy.length < numPlayerTiles) {
             let wordArgs = {
               word,
               coord: {
@@ -105,6 +106,7 @@ class ScrabbleBoard {
 
             if (score !== false && score > maxScore) {
               bestMove = wordArgs;
+              console.log(bestMove.word, bestMove.coord, bestMove.direction);
               maxScore = score;
             }
           }
@@ -607,6 +609,8 @@ class ScrabbleBoard {
     score *= wordMultiplier;
     if (usedTileCount === tileCount) {
       score += 50;
+    } else if (isCurrentTurn && usedTileCount === 0) {
+      return false;
     }
     return score + extraScores;
   }
