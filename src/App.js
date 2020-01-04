@@ -39,20 +39,37 @@ class ScrabbleBoard {
     for (let row = 0; row < 15; row++) {
       const direction = 'across';
       const rowTiles = this.getLettersFromRow(row);
-      const usefulTiles = rowTiles.concat(playerTiles);
-      const cmb = Combinatorics.permutationCombination(usefulTiles).toArray()
-        .filter(wordArray => {
-          if (wordArray.length === 1 && wordArray[0].length > 1) {
-            return false;
-          }
-          const word = wordArray.join('');
-          return !!this.dictionary.words[word];
-        });
+      const cmb = Combinatorics.permutationCombination(playerTiles).toArray();
       
       for (let column = 0; column < 15; column++) {
+        const availableTiles = rowTiles.slice(column);
+        const numPlayedSquares = availableTiles.filter(n => !!n).length;
         const executedWords = {};
-        for (let wordArray of cmb) {
+        for (let tileArray of cmb) {
+          const wordLength = tileArray.length + numPlayedSquares;
+          if (wordLength > availableTiles.length) {
+            continue;
+          }
+          const wordArray = [];
+
+          let index = 0;
+          let tileIndex = 0;
+          while (index < wordLength) {
+            if (availableTiles[index] !== null) {
+              wordArray.push(availableTiles[index]);
+            } else {
+              if (tileIndex >= tileArray.length) {
+                break;
+              }
+              wordArray.push(tileArray[tileIndex]);
+              tileIndex += 1;
+            }
+            index += 1;
+          }
           const word = wordArray.join('');
+          if (!this.dictionary.words[word]) {
+            continue;
+          }
 
           let score = 0;
           let playerTilesCopy = [...playerTiles];
@@ -106,7 +123,6 @@ class ScrabbleBoard {
 
             if (score !== false && score > maxScore) {
               bestMove = wordArgs;
-              console.log(bestMove.word, bestMove.coord, bestMove.direction);
               maxScore = score;
             }
           }
@@ -117,17 +133,37 @@ class ScrabbleBoard {
     for (let column = 0; column < 15; column++) {
       const direction = 'down';
       const columnTiles = this.getLettersFromColumn(column);
-      const usefulTiles = columnTiles.concat(playerTiles);
-      const cmb = Combinatorics.permutationCombination(usefulTiles).toArray()
-        .filter(wordArray => {
-          const word = wordArray.join('');
-          return !!this.dictionary.words[word];
-        });
+      const cmb = Combinatorics.permutationCombination(playerTiles).toArray();
 
       for (let row = 0; row < 15; row++) {
+        const availableTiles = columnTiles.slice(row);
+        const numPlayedSquares = availableTiles.filter(n => !!n).length;
         const executedWords = {};
-        for (let wordArray of cmb) {
+        for (let tileArray of cmb) {
+          const wordLength = tileArray.length + numPlayedSquares;
+          if (wordLength > availableTiles.length) {
+            continue;
+          }
+          const wordArray = [];
+
+          let index = 0;
+          let tileIndex = 0;
+          while (index < wordLength) {
+            if (availableTiles[index] !== null) {
+              wordArray.push(availableTiles[index]);
+            } else {
+              if (tileIndex >= tileArray.length) {
+                break;
+              }
+              wordArray.push(tileArray[tileIndex]);
+              tileIndex += 1;
+            }
+            index += 1;
+          }
           const word = wordArray.join('');
+          if (!this.dictionary.words[word]) {
+            continue;
+          }
 
           let score = 0;
           let playerTilesCopy = [...playerTiles];
@@ -197,14 +233,12 @@ class ScrabbleBoard {
 
   getLettersFromRow(row) {
     const letters = [];
-    let word = [];
     for (let column = 0; column < 15; column++) {
       let letter = this.board[row][column];
       if (letter !== "") {
-        word.push(letter);
-      } else if (word.length) {
-        letters.push(word.join(''));
-        word = [];
+        letters[column] = letter;
+      } else {
+        letters[column] = null;
       }
     }
     return letters;
@@ -212,14 +246,12 @@ class ScrabbleBoard {
 
   getLettersFromColumn(column) {
     const letters = [];
-    let word = [];
     for (let row = 0; row < 15; row++) {
       let letter = this.board[row][column];
       if (letter !== "") {
-        word.push(letter);
-      } else if (word.length) {
-        letters.push(word.join(''));
-        word = [];
+        letters[row] = letter;
+      } else {
+        letters[row] = null;
       }
     }
     return letters;
@@ -282,7 +314,7 @@ class ScrabbleBoard {
 
     const score = this.calculateScore({ word, coord, direction }, true, tileCount);
     if (score !== false) {
-      const scoringWord = this.findWord({coord, direction});
+      const scoringWord = this.findWordFromCenter({coord, direction});
       console.log(scoringWord.word, score);
       for (let letter of letters) {
         this.board[row][column] = letter;
@@ -426,8 +458,10 @@ class ScrabbleBoard {
         break;
       }
       if (this.board[row][column] === "") {
-        row -= rowInc;
-        column -= columnInc;
+        if (row !== coord.row || column !== coord.column) {
+          row -= rowInc;
+          column -= columnInc;
+        }
         break;
       }
 
